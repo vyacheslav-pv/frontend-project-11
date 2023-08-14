@@ -10,6 +10,7 @@ export default {
         parserError: 'Ресурс не содержит валидный RSS',
         duplicateUrl: 'RSS уже существует',
         emptyField: 'Не должно быть пустым',
+        network: 'Ошибка сети',
       },
     },
   },
