@@ -1,9 +1,19 @@
 import i18n from 'i18next';
+import axios from 'axios';
 import * as yup from 'yup';
+import uniqueId from 'lodash/uniqueId.js';
 import state from './view.js';
 import resources from './locales/index.js';
+import parse from './parser.js';
 
 const urlSchema = (validatedLinks) => yup.string().required().url().notOneOf(validatedLinks);
+
+const getUrlProxy = (url) => {
+  const href = new URL('/get', 'https://allorigins.hexlet.app');
+  href.searchParams.set('disableCache', 'true');
+  href.searchParams.set('url', url);
+  return href;
+};
 
 export default () => {
   const i18nextInstance = i18n.createInstance();
@@ -25,9 +35,14 @@ export default () => {
 
   const elements = {
     form: document.querySelector('.rss-form'),
+    posts: document.querySelector('.posts'),
+    feeds: document.querySelector('.feeds'),
     input: document.getElementById('url-input'),
     submitButton: document.querySelector('button[type="submit"]'),
     feedback: document.querySelector('.feedback'),
+    modalTitle: document.querySelector('.modal-title'),
+    modalDescription: document.querySelector('.modal-body'),
+    modalFullArticle: document.querySelector('.full-article'),
   };
 
   const initialState = {
@@ -38,6 +53,10 @@ export default () => {
       link: null,
     },
     validatedLinks: [],
+    uiState: {
+      readPostsId: new Set(),
+      modalPostId: null,
+    },
     data: {
       feeds: [],
       posts: [],
@@ -48,6 +67,7 @@ export default () => {
 
   elements.form.addEventListener('submit', (ev) => {
     ev.preventDefault();
+    watchedState.form.processState = 'validating';
     const formData = new FormData(ev.target);
     const url = formData.get('url');
 
@@ -55,27 +75,71 @@ export default () => {
 
     schema.validate(url)
       .then(() => {
-        watchedState.form.feedback = 'formFeedback.success';
+        watchedState.form.processState = 'validated';
+        watchedState.processState = 'loading';
         watchedState.validatedLinks.push(url);
         console.log(watchedState.validatedLinks);
-        watchedState.form.processState = 'filling';
+        const urlProx = getUrlProxy(url);
+        return axios.get(urlProx);
+      })
+      .then((response) => response.data.contents)
+      .then((content) => {
+        const parsedContent = parse(content);
+        const { currentFeed, currentPosts } = parsedContent;
+
+        if (!currentFeed || !currentPosts) {
+          throw new Error('Parser Error');
+        }
+
+        currentFeed.id = uniqueId();
+        currentPosts.forEach((post) => {
+          // eslint-disable-next-line no-param-reassign
+          post.feedId = currentFeed.id;
+          // eslint-disable-next-line no-param-reassign
+          post.id = uniqueId();
+        });
+
+        watchedState.data.feeds.push(currentFeed);
+        watchedState.data.posts.push(...currentPosts);
+
         watchedState.processState = 'added';
+        watchedState.form.processState = 'filling';
+        watchedState.form.feedback = 'formFeedback.success';
+        return currentFeed.id;
       })
       .catch((e) => {
         switch (e.name) {
           case 'ValidationError': {
             const [errorCode] = e.errors;
-            console.log(errorCode)
             watchedState.form.feedback = errorCode;
-            watchedState.form.processState = 'error';
-            watchedState.processState = 'error';
-            console.log(e.name)
+            watchedState.form.processState = 'invalidated';
             break;
           }
+
+          case 'AxiosError':
+            if (e.message === 'Network Error') {
+              watchedState.processState = 'networkError';
+              watchedState.form.feedback = 'formFeedback.errors.network';
+            }
+            break;
+
+          case 'Error':
+            if (e.message === 'Parser Error') {
+              watchedState.processState = 'parserError';
+              watchedState.form.feedback = 'formFeedback.errors.parserError';
+            }
+            break;
+
           default:
             throw new Error(`Unknown error ${e}`);
         }
       });
   });
-  console.log(watchedState.validatedLinks.join())
+  elements.posts.addEventListener('click', (e) => {
+    if (e.target.dataset.id) {
+      const readPostsId = e.target.dataset.id;
+      watchedState.uiState.modalPostId = readPostsId;
+      watchedState.uiState.readPostsId.add(readPostsId);
+    }
+  });
 };
