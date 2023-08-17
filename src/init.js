@@ -15,6 +15,39 @@ const getUrlProxy = (url) => {
   return href;
 };
 
+const updateRSS = (watchedState, urlProx, feedId) => {
+  axios.get(urlProx)
+    .then((response) => response.data.contents)
+    .then((content) => {
+      const parsedContent = parse(content);
+      const { currentPosts } = parsedContent;
+      if (!currentPosts) {
+        throw new Error('Parser Error');
+      }
+      return currentPosts;
+    })
+    .then((currentPosts) => {
+      const receivedPosts = watchedState.data.posts.filter((post) => post.feedId === feedId);
+      const receivedPostsGuids = receivedPosts.map((post) => post.guid);
+      const receivedGuids = new Set(receivedPostsGuids);
+      const newPosts = currentPosts.filter(({ guid }) => !receivedGuids.has(guid));
+
+      if (newPosts.length === 0) {
+        return false;
+      }
+
+      newPosts.forEach((post) => {
+        // eslint-disable-next-line no-param-reassign
+        post.feedId = feedId;
+        // eslint-disable-next-line no-param-reassign
+        post.id = uniqueId();
+      });
+      watchedState.data.posts.push(...newPosts);
+      return newPosts;
+    })
+    .finally(() => setTimeout(() => updateRSS(watchedState, urlProx, feedId), 5000));
+};
+
 export default () => {
   const i18nextInstance = i18n.createInstance();
   i18nextInstance.init({
@@ -71,6 +104,8 @@ export default () => {
     const formData = new FormData(ev.target);
     const url = formData.get('url');
 
+    let urlProx;
+
     const schema = urlSchema(watchedState.validatedLinks);
 
     schema.validate(url)
@@ -78,8 +113,7 @@ export default () => {
         watchedState.form.processState = 'validated';
         watchedState.processState = 'loading';
         watchedState.validatedLinks.push(url);
-        console.log(watchedState.validatedLinks);
-        const urlProx = getUrlProxy(url);
+        urlProx = getUrlProxy(url);
         return axios.get(urlProx);
       })
       .then((response) => response.data.contents)
@@ -106,6 +140,10 @@ export default () => {
         watchedState.form.processState = 'filling';
         watchedState.form.feedback = 'formFeedback.success';
         return currentFeed.id;
+      })
+      .then((feedId) => {
+        watchedState.processState = 'monitoring';
+        return setTimeout(() => updateRSS(watchedState, urlProx, feedId), 5000);
       })
       .catch((e) => {
         switch (e.name) {
