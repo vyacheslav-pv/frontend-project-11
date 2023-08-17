@@ -39,6 +39,7 @@ const handleProcessState = (elements, processState) => {
       break;
 
     case 'initialized':
+    case 'monitoring':
       break;
 
     case 'parserError':
