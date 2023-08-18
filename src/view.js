@@ -78,7 +78,6 @@ const renderFeedback = (elements, value, i18nextInstance) => {
 
 const renderFeeds = (elements, value, i18nextInstance) => {
   const { feeds } = elements;
-
   const div1 = document.createElement('div');
   div1.classList.add('card', 'border-0');
 
