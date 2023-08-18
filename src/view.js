@@ -179,40 +179,41 @@ const renderModal = (elements, value, initialState) => {
   modalFullArticle.setAttribute('href', clickedPost.link);
 };
 
-const render = (elements, initialState, i18nextInstance) => (path, value) => {
-  switch (path) {
-    case 'form.processState':
-      handleFormProcessState(elements, value);
-      break;
+export default (initialState, elements, i18nextInstance) => {
+  const watchedState = onChange(initialState, (path, value) => {
+    switch (path) {
+      case 'form.processState':
+        handleFormProcessState(elements, value);
+        break;
 
-    case 'processState':
-      handleProcessState(elements, value);
-      break;
+      case 'processState':
+        handleProcessState(elements, value);
+        break;
 
-    case 'form.feedback':
-      renderFeedback(elements, value, i18nextInstance);
-      break;
+      case 'form.feedback':
+        renderFeedback(elements, value, i18nextInstance);
+        break;
 
-    case 'data.feeds':
-      renderFeeds(elements, value, i18nextInstance);
-      break;
+      case 'data.feeds':
+        renderFeeds(elements, value, i18nextInstance);
+        break;
 
-    case 'data.posts':
-      renderPosts(elements, value, i18nextInstance);
-      setLinkReadPost(initialState.uiState.readPostsId);
-      break;
+      case 'data.posts':
+        renderPosts(elements, value, i18nextInstance);
+        setLinkReadPost(initialState.uiState.readPostsId);
+        break;
 
-    case 'uiState.readPostsId':
-      setLinkReadPost(value);
-      break;
+      case 'uiState.readPostsId':
+        setLinkReadPost(value);
+        break;
 
-    case 'uiState.modalPostId':
-      renderModal(elements, value, initialState);
-      break;
+      case 'uiState.modalPostId':
+        renderModal(elements, value, initialState);
+        break;
 
-    default:
-      break;
-  }
+      default:
+        break;
+    }
+  });
+  return watchedState;
 };
-
-export default (initialState, elements, i18nextInstance) => onChange(initialState, render(elements, initialState, i18nextInstance));
