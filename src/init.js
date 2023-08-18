@@ -37,10 +37,8 @@ const updateRSS = (watchedState, urlProx, feedId) => {
       }
 
       newPosts.forEach((post) => {
-        // eslint-disable-next-line no-param-reassign
-        post.feedId = feedId;
-        // eslint-disable-next-line no-param-reassign
-        post.id = uniqueId();
+        post.feedId = feedId; // eslint-disable-line no-param-reassign
+        post.id = uniqueId(); // eslint-disable-line no-param-reassign
       });
       watchedState.data.posts.push(...newPosts);
       return newPosts;
