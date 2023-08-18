@@ -83,7 +83,6 @@ export default () => {
     form: {
       feedback: null,
       processState: 'filling',
-      link: null,
     },
     validatedLinks: [],
     uiState: {
