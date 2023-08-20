@@ -1,7 +1,7 @@
 import i18n from 'i18next';
 import axios from 'axios';
 import * as yup from 'yup';
-import uniqueId from 'lodash/uniqueId.js';
+import _ from 'lodash';
 import state from './view.js';
 import resources from './locales/index.js';
 import parse from './parser.js';
@@ -15,36 +15,29 @@ const getUrlProxy = (url) => {
   return href;
 };
 
-const updateRSS = (watchedState, urlProx, feedId) => {
-  axios.get(urlProx)
-    .then((response) => response.data.contents)
-    .then((content) => {
-      const parsedContent = parse(content);
-      const { currentPosts } = parsedContent;
-      if (!currentPosts) {
-        throw new Error('Parser Error');
-      }
-      return currentPosts;
-    })
-    .then((currentPosts) => {
-      const receivedPosts = watchedState.data.posts.filter((post) => post.feedId === feedId);
-      const receivedPostsGuids = receivedPosts.map((post) => post.guid);
-      const receivedGuids = new Set(receivedPostsGuids);
-      const newPosts = currentPosts.filter(({ guid }) => !receivedGuids.has(guid));
-
-      if (newPosts.length === 0) {
-        return false;
-      }
-
-      newPosts.forEach((newpost) => {
-        const post = newpost;
-        post.feedId = feedId;
-        post.id = uniqueId();
-      });
-      watchedState.data.posts.push(...newPosts);
-      return newPosts;
-    })
-    .finally(() => setTimeout(() => updateRSS(watchedState, urlProx, feedId), 5000));
+const updateRSS = (watchedState) => {
+  const promises = watchedState.data.feeds.map((feed) => {
+    const proxyURL = new URL(getUrlProxy(feed.url));
+    return axios.get(proxyURL)
+      .then((responce) => {
+        const content = responce.data.contents;
+        const { currentPosts } = parse(content);
+        const posts = watchedState.data.posts.filter((post) => post.feedId === feed.id);
+        const newPosts = _.differenceBy(currentPosts, posts, 'title');
+        newPosts.forEach((newpost) => {
+          const post = newpost;
+          post.feedId = feed.id;
+          post.id = _.uniqueId();
+        });
+        const initialState = { ...watchedState };
+        initialState.data.posts = [...newPosts, ...watchedState.data.posts];
+      })
+      .catch(() => []);
+  });
+  Promise.all(promises)
+    .finally(() => {
+      setTimeout(updateRSS, 5000, watchedState);
+    });
 };
 
 export default () => {
@@ -123,12 +116,13 @@ export default () => {
               throw new Error('Parser Error');
             }
 
-            currentFeed.id = uniqueId();
+            currentFeed.id = _.uniqueId();
+            currentFeed.url = url;
             currentPosts.forEach((post) => {
             // eslint-disable-next-line no-param-reassign
               post.feedId = currentFeed.id;
               // eslint-disable-next-line no-param-reassign
-              post.id = uniqueId();
+              post.id = _.uniqueId();
             });
 
             watchedState.data.feeds.push(currentFeed);
@@ -138,10 +132,6 @@ export default () => {
             watchedState.form.processState = 'filling';
             watchedState.form.feedback = 'formFeedback.success';
             return currentFeed.id;
-          })
-          .then((feedId) => {
-            watchedState.processState = 'monitoring';
-            return setTimeout(() => updateRSS(watchedState, urlProx, feedId), 5000);
           })
           .catch((e) => {
             switch (e.name) {
@@ -178,5 +168,6 @@ export default () => {
           watchedState.uiState.readPostsId.add(readPostsId);
         }
       });
+      updateRSS(watchedState);
     });
 };
