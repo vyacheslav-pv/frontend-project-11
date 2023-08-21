@@ -40,6 +40,10 @@ const getPosts = (document) => {
 export default (data) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(data, 'text/xml');
+  const errorNode = doc.querySelector('parsererror');
+  if (errorNode) {
+    throw new Error('Parser Error');
+  }
   const currentFeed = getFeed(doc);
   const currentPosts = getPosts(doc);
   return { currentFeed, currentPosts };
