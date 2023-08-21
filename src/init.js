@@ -41,16 +41,6 @@ const updateRSS = (watchedState) => {
 };
 
 export default () => {
-  yup.setLocale({
-    mixed: {
-      notOneOf: 'formFeedback.errors.duplicateUrl',
-    },
-    string: {
-      required: 'formFeedback.errors.emptyField',
-      url: 'formFeedback.errors.invalidUrl',
-    },
-  });
-
   const i18nextInstance = i18n.createInstance();
   i18nextInstance.init({
     lng: 'ru',
@@ -87,6 +77,16 @@ export default () => {
         },
       };
 
+      yup.setLocale({
+        mixed: {
+          notOneOf: 'formFeedback.errors.duplicateUrl',
+        },
+        string: {
+          required: 'formFeedback.errors.emptyField',
+          url: 'formFeedback.errors.invalidUrl',
+        },
+      });
+
       const watchedState = state(initialState, elements, i18nextInstance);
 
       elements.form.addEventListener('submit', (ev) => {
@@ -96,11 +96,10 @@ export default () => {
         const url = formData.get('url');
 
         urlSchema(watchedState.validatedLinks).validate(url)
-          .then(() => {
+          .then((link) => {
             watchedState.form.processState = 'validated';
             watchedState.processState = 'loading';
-            watchedState.validatedLinks.push(url);
-            const urlProx = getUrlProxy(url);
+            const urlProx = getUrlProxy(link);
             return axios.get(urlProx);
           })
           .then((response) => response.data.contents)
@@ -118,6 +117,7 @@ export default () => {
 
             watchedState.data.feeds.push(currentFeed);
             watchedState.data.posts.push(...currentPosts);
+            watchedState.validatedLinks.push(url);
 
             watchedState.processState = 'added';
             watchedState.form.processState = 'filling';
