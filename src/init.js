@@ -118,10 +118,9 @@ export default () => {
 
             currentFeed.id = _.uniqueId();
             currentFeed.url = url;
-            currentPosts.forEach((post) => {
-            // eslint-disable-next-line no-param-reassign
+            currentPosts.forEach((currentpost) => {
+              const post = currentpost;
               post.feedId = currentFeed.id;
-              // eslint-disable-next-line no-param-reassign
               post.id = _.uniqueId();
             });
 
