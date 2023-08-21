@@ -95,26 +95,18 @@ export default () => {
         const formData = new FormData(ev.target);
         const url = formData.get('url');
 
-        let urlProx;
-
-        const schema = urlSchema(watchedState.validatedLinks);
-
-        schema.validate(url)
+        urlSchema(watchedState.validatedLinks).validate(url)
           .then(() => {
             watchedState.form.processState = 'validated';
             watchedState.processState = 'loading';
             watchedState.validatedLinks.push(url);
-            urlProx = getUrlProxy(url);
+            const urlProx = getUrlProxy(url);
             return axios.get(urlProx);
           })
           .then((response) => response.data.contents)
           .then((content) => {
             const parsedContent = parse(content);
             const { currentFeed, currentPosts } = parsedContent;
-
-            if (!currentFeed || !currentPosts) {
-              throw new Error('Parser Error');
-            }
 
             currentFeed.id = _.uniqueId();
             currentFeed.url = url;
