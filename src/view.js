@@ -109,7 +109,7 @@ const renderFeeds = (elements, value, i18nextInstance) => {
 
   div2.append(h2);
   div1.append(div2, ul);
-  feeds.innerHTML = '';
+  feeds.textContent = '';
   feeds.append(div1);
 };
 
