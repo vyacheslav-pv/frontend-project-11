@@ -141,7 +141,7 @@ export default () => {
                 break;
 
               case 'Error':
-                if (e.message === 'Parser Error') {
+                if (e.isParseError) {
                   watchedState.processState = 'parserError';
                   watchedState.form.feedback = 'formFeedback.errors.parserError';
                 }
