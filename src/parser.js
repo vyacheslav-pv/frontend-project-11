@@ -42,7 +42,9 @@ export default (data) => {
   const doc = parser.parseFromString(data, 'text/xml');
   const errorNode = doc.querySelector('parsererror');
   if (errorNode) {
-    throw new Error('Parser Error');
+    const error = new Error(errorNode.textContent);
+    error.isParseError = true;
+    throw error;
   }
   const currentFeed = getFeed(doc);
   const currentPosts = getPosts(doc);
