@@ -48,7 +48,7 @@ const updateRSS = (watchedState) => {
         const initialState = { ...watchedState };
         initialState.data.posts = [...newPosts, ...watchedState.data.posts];
       })
-      .catch(() => []);
+      .catch((error) => console.log(error));
   });
   Promise.all(promises)
     .finally(() => {
