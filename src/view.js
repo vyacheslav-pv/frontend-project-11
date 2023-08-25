@@ -1,78 +1,45 @@
 import onChange from 'on-change';
 
-const handleFormProcessState = (elements, processState) => {
-  const { input, submitButton } = elements;
-  switch (processState) {
-    case 'invalidated':
-      submitButton.disabled = false;
-      input.classList.add('is-invalid');
-      break;
-
-    case 'validating':
-      submitButton.disabled = true;
-      break;
-
-    case 'validated':
-      submitButton.disabled = false;
-      input.classList.remove('is-invalid');
-      break;
-
-    case 'filling':
-      submitButton.disabled = false;
-      break;
-
-    default:
-      throw new Error(`Unknown process state: ${processState}`);
+const handleFormProcess = (initialState, elements, i18nextInstance) => {
+  const { input, feedback } = elements;
+  const { form: { error, valid } } = initialState;
+  if (valid) {
+    feedback.textContent = i18nextInstance.t('formFeedback.success');
+    input.classList.remove('is-invalid');
+    feedback.classList.remove('text-danger');
+    feedback.classList.add('text-success');
+  } else {
+    feedback.textContent = i18nextInstance.t(error);
+    input.classList.add('is-invalid');
+    feedback.classList.remove('text-success');
+    feedback.classList.add('text-danger');
   }
 };
 
-const handleProcessState = (elements, processState) => {
+const handleProcess = (elements, processState) => {
   const { form, input, submitButton } = elements;
+
+  submitButton.disabled = (processState === 'loading');
+
+  if (processState === 'idle' || processState === 'failed') {
+    input.removeAttribute('readonly');
+  }
+
   switch (processState) {
     case 'loading':
-      submitButton.disabled = true;
+      input.setAttribute('readonly', 'true');
       break;
 
-    case 'added':
+    case 'idle':
       form.reset();
       input.focus();
       break;
 
-    case 'initialized':
-    case 'monitoring':
-      break;
-
-    case 'parserError':
-    case 'networkError':
-      submitButton.disabled = false;
+    case 'failed':
       break;
 
     default:
       throw new Error(`Unknown process state: ${processState}`);
-  }
-};
-
-const renderFeedback = (elements, value, i18nextInstance) => {
-  const { feedback } = elements;
-  feedback.textContent = i18nextInstance.t(value);
-
-  switch (value) {
-    case 'formFeedback.success':
-      feedback.classList.remove('text-danger');
-      feedback.classList.add('text-success');
-      break;
-
-    case 'formFeedback.errors.emptyField':
-    case 'formFeedback.errors.duplicateUrl':
-    case 'formFeedback.errors.invalidUrl':
-    case 'formFeedback.errors.parserError':
-    case 'formFeedback.errors.network':
-      feedback.classList.remove('text-success');
-      feedback.classList.add('text-danger');
-      break;
-
-    default:
-      throw new Error(`Unknown feedback code "${value}"`);
   }
 };
 
@@ -181,16 +148,13 @@ const renderModal = (elements, value, initialState) => {
 export default (initialState, elements, i18nextInstance) => {
   const watchedState = onChange(initialState, (path, value) => {
     switch (path) {
-      case 'form.processState':
-        handleFormProcessState(elements, value);
+      case 'form.error':
+      case 'form.valid':
+        handleFormProcess(initialState, elements, i18nextInstance);
         break;
 
       case 'processState':
-        handleProcessState(elements, value);
-        break;
-
-      case 'form.feedback':
-        renderFeedback(elements, value, i18nextInstance);
+        handleProcess(elements, value);
         break;
 
       case 'data.feeds':
