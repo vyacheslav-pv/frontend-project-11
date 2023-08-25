@@ -15,6 +15,22 @@ const getUrlProxy = (url) => {
   return href;
 };
 
+const typeError = (e) => {
+  let value = null;
+
+  if (e.isParseError) {
+    value = 'formFeedback.errors.parserError';
+  }
+  if (e.isAxiosError) {
+    value = 'formFeedback.errors.network';
+  }
+  if (e.errors) {
+    const [errorCode] = e.errors;
+    value = errorCode;
+  }
+  return value;
+};
+
 const updateRSS = (watchedState) => {
   const promises = watchedState.data.feeds.map((feed) => {
     const proxyURL = new URL(getUrlProxy(feed.url));
@@ -61,10 +77,10 @@ export default () => {
       };
 
       const initialState = {
-        processState: 'initialized',
+        processState: 'idle',
         form: {
-          feedback: null,
-          processState: 'filling',
+          error: null,
+          valid: 'filling',
         },
         validatedLinks: [],
         uiState: {
@@ -91,14 +107,12 @@ export default () => {
 
       elements.form.addEventListener('submit', (ev) => {
         ev.preventDefault();
-        watchedState.form.processState = 'validating';
+        watchedState.processState = 'loading';
         const formData = new FormData(ev.target);
         const url = formData.get('url');
 
         urlSchema(watchedState.validatedLinks).validate(url)
           .then((link) => {
-            watchedState.form.processState = 'validated';
-            watchedState.processState = 'loading';
             const urlProx = getUrlProxy(link);
             return axios.get(urlProx);
           })
@@ -106,6 +120,8 @@ export default () => {
           .then((content) => {
             const parsedContent = parse(content);
             const { currentFeed, currentPosts } = parsedContent;
+
+            watchedState.form.valid = true;
 
             currentFeed.id = _.uniqueId();
             currentFeed.url = url;
@@ -118,38 +134,14 @@ export default () => {
             watchedState.data.feeds.push(currentFeed);
             watchedState.data.posts.push(...currentPosts);
             watchedState.validatedLinks.push(url);
+            watchedState.processState = 'idle';
 
-            watchedState.processState = 'added';
-            watchedState.form.processState = 'filling';
-            watchedState.form.feedback = 'formFeedback.success';
             return currentFeed.id;
           })
           .catch((e) => {
-            switch (e.name) {
-              case 'ValidationError': {
-                const [errorCode] = e.errors;
-                watchedState.form.feedback = errorCode;
-                watchedState.form.processState = 'invalidated';
-                break;
-              }
-
-              case 'AxiosError':
-                if (e.message === 'Network Error') {
-                  watchedState.processState = 'networkError';
-                  watchedState.form.feedback = 'formFeedback.errors.network';
-                }
-                break;
-
-              case 'Error':
-                if (e.isParseError) {
-                  watchedState.processState = 'parserError';
-                  watchedState.form.feedback = 'formFeedback.errors.parserError';
-                }
-                break;
-
-              default:
-                throw new Error(`Unknown error ${e}`);
-            }
+            watchedState.form.error = typeError(e);
+            watchedState.form.valid = false;
+            watchedState.processState = 'failed';
           });
       });
       elements.posts.addEventListener('click', (e) => {
