@@ -175,7 +175,7 @@ export default (initialState, elements, i18nextInstance) => {
         break;
 
       default:
-        break;
+        throw new Error('Unknown error');
     }
   });
   return watchedState;
