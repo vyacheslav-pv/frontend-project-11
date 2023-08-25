@@ -170,6 +170,9 @@ export default (initialState, elements, i18nextInstance) => {
         setLinkReadPost(value);
         break;
 
+      case 'validatedLinks':
+        break;
+
       case 'uiState.modalPostId':
         renderModal(elements, value, initialState);
         break;
